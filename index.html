@@ -28,7 +28,8 @@
       <button type="button" data-mode="solo-md" aria-pressed="false" title="강의노트를 원래 순서대로">노트만</button>
     </div>
   </div>
-  <button class="tb-btn" id="btn-hl-panel" type="button" aria-pressed="false" title="하이라이트 모아보기">하이라이트 <span class="count" id="hl-count">0</span></button>
+  <button class="tb-btn" id="btn-hl-panel" type="button" aria-pressed="false" title="하이라이트 모아보기"><span class="tb-hide-xs">하이라이트</span><span class="tb-only-xs" aria-hidden="true">HL</span> <span class="count" id="hl-count">0</span></button>
+  <button class="tb-btn prog-btn" id="prog-btn" type="button" aria-haspopup="true" aria-expanded="false" title="진도"><span class="prog-ring" aria-hidden="true"></span><span class="tb-hide-sm">진도</span> <span id="prog-pct">0%</span></button>
   <button class="tb-btn tb-hide-sm" id="btn-focus" type="button" aria-pressed="false" title="강의노트에서 현출만 남기기">현출 집중</button>
   <button class="sync-badge" id="sync-badge" type="button" data-state="local" title="GitHub 동기화"><span class="dot"></span><span id="sync-text">로컬</span></button>
   <div class="menu">
@@ -40,6 +41,7 @@
       <button type="button" id="btn-cases-close">판례 상자 모두 접기</button>
       <button type="button" id="btn-cases-open">판례 상자 모두 펴기</button>
       <button type="button" id="btn-memos-toggle">메모 모두 접기/펴기</button>
+      <button type="button" id="btn-lane-toggle">메모줄 접기</button>
       <div class="menu-row">열 비율
         <div class="seg" id="seg-ratio">
           <button type="button" data-ratio="4:6" aria-pressed="true">4:6</button>
@@ -61,7 +63,11 @@
         </div>
       </div>
       <hr>
-      <div class="menu-head">하이라이트·메모</div>
+      <div class="menu-head">편집</div>
+      <label class="menu-item"><input type="checkbox" id="opt-orig"> 원본 보기 (고친 문단을 잠시 원래대로)</label>
+      <button type="button" id="btn-edits-revert">편집 모두 되돌리기 (0)</button>
+      <hr>
+      <div class="menu-head">하이라이트·메모·진도</div>
       <button type="button" id="btn-sync-settings">GitHub 연결 설정</button>
       <button type="button" id="btn-export-json">백업 내보내기 (JSON)</button>
       <button type="button" id="btn-import-json">백업 불러오기</button>
@@ -79,11 +85,13 @@
   </main>
 </div>
 
-<aside class="side-panel" id="hl-panel" hidden aria-label="하이라이트 모아보기">
+<aside class="side-panel" id="hl-panel" hidden aria-labelledby="hl-panel-title">
   <div class="sp-head">
-    <h2>하이라이트 모아보기</h2>
+    <h2 id="hl-panel-title">하이라이트 모아보기</h2><span class="sp-total" id="hl-total"></span>
+    <button class="tb-btn sp-full-btn" type="button" id="hl-panel-full" aria-pressed="false" title="전체 화면으로 펼치기"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M9 2h5v5M7 14H2V9M14 2 9.5 6.5M2 14l4.5-4.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span class="lbl">전체 화면</span></button>
     <button class="icon-btn" type="button" id="hl-panel-close" aria-label="닫기">✕</button>
   </div>
+  <nav class="sp-nav" id="hl-nav" aria-label="단원·대쟁점 목차"></nav>
   <div class="sp-filters">
     <label><input type="checkbox" class="f-color" value="yellow" checked> 노랑</label>
     <label><input type="checkbox" class="f-color" value="green" checked> 초록</label>
@@ -94,7 +102,7 @@
     <label><input type="checkbox" id="f-memo"> 메모 있는 것만</label>
     <label>정렬 <select id="f-sort"><option value="doc">본문 순서</option><option value="recent">최근 순</option></select></label>
   </div>
-  <div class="sp-body" id="hl-list"></div>
+  <div class="sp-body" id="hl-list" tabindex="-1"></div>
   <div class="sp-actions">
     <button type="button" class="btn" id="hl-copy-md">Markdown 복사</button>
     <button type="button" class="btn" id="hl-dl-md">.md 내려받기</button>
@@ -184,6 +192,79 @@
   <button class="txt" type="button" data-act="memo">메모</button>
   <button class="txt" type="button" data-act="delete">삭제</button>
 </div>
+<div class="pen-dock" id="pen-dock" role="toolbar" aria-label="필기 도구">
+  <button type="button" class="dock-tool" data-tool="select" aria-pressed="true" title="선택 도구 (V) — 글자를 선택하면 작은 도구막대가 뜹니다"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 2.2l8.6 5.1-3.9 1.1-1.9 3.9z" fill="currentColor"/></svg><span class="lbl">선택</span></button>
+  <span class="dock-sep" aria-hidden="true"></span>
+  <button type="button" class="dock-tool dock-color" data-tool="yellow" aria-pressed="false" title="노랑 형광펜 (1) — 드래그하고 떼면 바로 칠함" aria-label="노랑 형광펜"><i class="sw" data-color="yellow"></i></button>
+  <button type="button" class="dock-tool dock-color" data-tool="green" aria-pressed="false" title="초록 형광펜 (2)" aria-label="초록 형광펜"><i class="sw" data-color="green"></i></button>
+  <button type="button" class="dock-tool dock-color" data-tool="pink" aria-pressed="false" title="분홍 형광펜 (3)" aria-label="분홍 형광펜"><i class="sw" data-color="pink"></i></button>
+  <button type="button" class="dock-tool dock-color" data-tool="blue" aria-pressed="false" title="파랑 형광펜 (4)" aria-label="파랑 형광펜"><i class="sw" data-color="blue"></i></button>
+  <button type="button" class="dock-tool" data-tool="memo" aria-pressed="false" title="메모 펜 (M) — 드래그하고 떼면 칠하고 바로 메모 입력"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 2.5h11v8.2H8.2l-3.2 2.9v-2.9H2.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M5 5.6h6M5 8h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span class="lbl">메모</span></button>
+  <button type="button" class="dock-tool" data-tool="edit" aria-pressed="false" title="편집 (E) — 문단을 눌러 직접 고치기 (굵게·기울임·밑줄·글자 색)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.6 2.4l3 3-7.9 7.9H2.7v-3z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 4l3 3" stroke="currentColor" stroke-width="1.3"/></svg><span class="lbl">편집</span></button>
+  <span class="dock-sep" aria-hidden="true"></span>
+  <button type="button" class="dock-btn" id="dock-undo" disabled title="되돌리기 (Ctrl+Z)" aria-label="되돌리기"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.2 3.6L2.2 6.6l3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.7 6.6h6.8a3.6 3.6 0 010 7.2H6.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+  <button type="button" class="dock-btn" id="dock-redo" disabled title="다시하기 (Ctrl+Shift+Z)" aria-label="다시하기"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.8 3.6l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.3 6.6H6.5a3.6 3.6 0 000 7.2h2.7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+  <span class="dock-sep" aria-hidden="true"></span>
+  <button type="button" class="dock-btn" id="dock-blank" aria-pressed="false" aria-expanded="false" aria-haspopup="true" title="빈칸 모드"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.8" y="4.6" width="12.4" height="6.8" rx="1.6" fill="currentColor" opacity=".28"/><path d="M3.6 8h8.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="1.6 2.2"/></svg><span class="lbl">빈칸</span></button>
+  <button type="button" class="dock-btn" id="dock-lane" aria-pressed="true" title="메모줄 접기"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10.2 2.8v10.4" stroke="currentColor" stroke-width="1.4"/><path d="M11.6 5.6h1.2M11.6 8h1.2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg><span class="lbl">메모줄</span></button>
+  <button type="button" class="dock-btn" id="dock-panel" title="하이라이트 모아보기"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 4h8M5.5 8h8M5.5 12h5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="2.8" cy="4" r="1" fill="currentColor"/><circle cx="2.8" cy="8" r="1" fill="currentColor"/><circle cx="2.8" cy="12" r="1" fill="currentColor"/></svg><span class="lbl">모아보기</span></button>
+  <button type="button" class="dock-btn dock-min" id="dock-min" title="도구 막대 접기" aria-label="도구 막대 접기"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+</div>
+<button type="button" class="dock-fab" id="dock-fab" hidden title="필기 도구 펼치기" aria-label="필기 도구 펼치기"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.6 2.4l3 3-7.9 7.9H2.7v-3z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 4l3 3" stroke="currentColor" stroke-width="1.3"/></svg></button>
+<div class="dock-pop" id="blank-pop" hidden role="group" aria-label="빈칸 모드">
+  <div class="bp-title">빈칸으로 가릴 색</div>
+  <div class="bp-colors">
+    <button type="button" class="bp-c" data-color="yellow" aria-pressed="false"><i class="sw" data-color="yellow"></i>노랑</button>
+    <button type="button" class="bp-c" data-color="green" aria-pressed="false"><i class="sw" data-color="green"></i>초록</button>
+    <button type="button" class="bp-c" data-color="pink" aria-pressed="false"><i class="sw" data-color="pink"></i>분홍</button>
+    <button type="button" class="bp-c" data-color="blue" aria-pressed="false"><i class="sw" data-color="blue"></i>파랑</button>
+  </div>
+  <div class="bp-actions">
+    <button type="button" class="btn" id="bp-show">모두 보기</button>
+    <button type="button" class="btn" id="bp-hide">모두 다시 가리기</button>
+    <button type="button" class="btn" id="bp-off">끄기</button>
+  </div>
+  <p class="bp-help">가린 곳을 누르면 열리고, 다시 누르면 닫힙니다.</p>
+</div>
+<div class="edit-bar" id="edit-bar" hidden role="toolbar" aria-label="글자 서식">
+  <span class="eb-status">고칠 문단을 누르세요</span>
+  <button type="button" data-cmd="bold" title="굵게 (Ctrl+B)" aria-label="굵게"><b>B</b></button>
+  <button type="button" data-cmd="italic" title="기울임 (Ctrl+I)" aria-label="기울임"><i>I</i></button>
+  <button type="button" data-cmd="underline" title="밑줄 (Ctrl+U)" aria-label="밑줄"><u>U</u></button>
+  <span class="dock-sep" aria-hidden="true"></span>
+  <span class="eb-colors" role="group" aria-label="글자 색"></span>
+  <button type="button" data-cmd="removeFormat" title="선택한 곳의 서식 지우기">서식 지우기</button>
+  <span class="dock-sep" aria-hidden="true"></span>
+  <button type="button" data-act="revert" title="이 문단을 원래 글로 되돌리기">원래대로</button>
+  <button type="button" data-act="done" class="eb-done" title="편집 끝내기 (Esc)">완료</button>
+</div>
+<div class="memo-sheet" id="memo-sheet" hidden role="dialog" aria-label="메모">
+  <div class="ms-head"><span class="ms-title">메모</span><span class="ms-row"></span><button type="button" class="icon-btn" id="ms-close" aria-label="닫기">✕</button></div>
+  <div class="ms-body">
+    <p class="memo-quote ms-quote"></p>
+    <div class="ms-colors" role="group" aria-label="색 바꾸기">
+      <button class="hl-sw" type="button" data-color="yellow" aria-label="노랑"></button>
+      <button class="hl-sw" type="button" data-color="green" aria-label="초록"></button>
+      <button class="hl-sw" type="button" data-color="pink" aria-label="분홍"></button>
+      <button class="hl-sw" type="button" data-color="blue" aria-label="파랑"></button>
+    </div>
+    <textarea id="ms-text" rows="4" placeholder="메모를 적으세요. 입력을 멈추면 자동 저장됩니다."></textarea>
+    <div class="ms-actions"><span class="memo-time"></span><button type="button" class="btn btn-danger" data-act="delhl">하이라이트 삭제</button><button type="button" class="btn" data-act="delmemo">메모 지우기</button></div>
+    <div class="ms-list-title">이 행의 다른 메모</div>
+    <div class="ms-list"></div>
+  </div>
+</div>
+<div class="prog-pop" id="prog-pop" hidden role="dialog" aria-label="진도">
+  <div class="pp-head"><b>진도</b><span class="pp-sum"></span></div>
+  <div class="pp-bar pbar" aria-hidden="true"><i></i></div>
+  <div class="pp-units"></div>
+  <div class="pp-actions"><button type="button" class="btn" id="pp-resume" hidden></button><button type="button" class="btn btn-danger" id="pp-reset">진도 초기화</button></div>
+</div>
+<div class="resume-chip" id="resume-chip" hidden>
+  <button type="button" id="resume-go"><span aria-hidden="true">↪</span> <span id="resume-text"></span></button>
+  <button type="button" class="icon-btn" id="resume-close" aria-label="닫기">✕</button>
+</div>
+<button type="button" class="hl-return" id="hl-return" hidden>↩ 모아보기로 돌아가기</button>
 <div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
 
 <script src="assets/app.js" defer></script>
