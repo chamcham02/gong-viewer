@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://api.github.com; manifest-src 'self'; base-uri 'none'; form-action 'none'">
+<title>병렬노트</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;family=Noto+Serif+KR:wght@400;600;700&amp;display=swap">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#1b2127">
+</head>
+<body>
+<header class="topbar" id="topbar">
+  <button class="icon-btn" id="btn-toc" type="button" aria-label="목차 열기/닫기" title="목차">☰</button>
+  <div class="brand">
+    <span class="brand-title" id="brand-title">병렬노트</span>
+    <span class="brand-sub" id="brand-sub"></span>
+  </div>
+  <div class="tb-group">
+    <div class="seg" role="group" aria-label="보기 방식" id="seg-mode">
+      <button type="button" data-mode="parallel" aria-pressed="true">병렬</button>
+      <button type="button" data-mode="solo-pdf" aria-pressed="false" title="요약본을 원래 순서대로">요약본만</button>
+      <button type="button" data-mode="solo-md" aria-pressed="false" title="강의노트를 원래 순서대로">노트만</button>
+    </div>
+  </div>
+  <button class="tb-btn" id="btn-hl-panel" type="button" aria-pressed="false" title="하이라이트 모아보기">하이라이트 <span class="count" id="hl-count">0</span></button>
+  <button class="tb-btn tb-hide-sm" id="btn-focus" type="button" aria-pressed="false" title="강의노트에서 현출만 남기기">현출 집중</button>
+  <button class="sync-badge" id="sync-badge" type="button" data-state="local" title="GitHub 동기화"><span class="dot"></span><span id="sync-text">로컬</span></button>
+  <div class="menu">
+    <button class="icon-btn" id="btn-menu" type="button" aria-haspopup="true" aria-expanded="false" aria-label="보기 설정과 도구">⋯</button>
+    <div class="menu-panel" id="menu-panel" hidden>
+      <div class="menu-head">보기</div>
+      <label class="menu-item"><input type="checkbox" id="opt-supp" checked> 보완 현출 표시</label>
+      <label class="menu-item tb-only-sm"><input type="checkbox" id="opt-focus"> 현출 집중</label>
+      <button type="button" id="btn-cases-close">판례 상자 모두 접기</button>
+      <button type="button" id="btn-cases-open">판례 상자 모두 펴기</button>
+      <button type="button" id="btn-memos-toggle">메모 모두 접기/펴기</button>
+      <div class="menu-row">열 비율
+        <div class="seg" id="seg-ratio">
+          <button type="button" data-ratio="4:6" aria-pressed="true">4:6</button>
+          <button type="button" data-ratio="5:5" aria-pressed="false">5:5</button>
+          <button type="button" data-ratio="3:7" aria-pressed="false">3:7</button>
+        </div>
+      </div>
+      <div class="menu-row">글자
+        <div class="seg">
+          <button type="button" id="btn-font-dec" aria-pressed="false">A−</button>
+          <button type="button" id="btn-font-inc" aria-pressed="false">A+</button>
+        </div>
+      </div>
+      <div class="menu-row">테마
+        <div class="seg" id="seg-theme">
+          <button type="button" data-theme-set="system" aria-pressed="true">시스템</button>
+          <button type="button" data-theme-set="light" aria-pressed="false">밝게</button>
+          <button type="button" data-theme-set="dark" aria-pressed="false">어둡게</button>
+        </div>
+      </div>
+      <hr>
+      <div class="menu-head">하이라이트·메모</div>
+      <button type="button" id="btn-sync-settings">GitHub 연결 설정</button>
+      <button type="button" id="btn-export-json">백업 내보내기 (JSON)</button>
+      <button type="button" id="btn-import-json">백업 불러오기</button>
+      <button type="button" id="btn-clear-all" class="btn-danger">모든 하이라이트·메모 지우기</button>
+    </div>
+  </div>
+</header>
+<div id="banner-area"></div>
+<div class="layout">
+  <nav class="toc" id="toc" aria-label="목차"></nav>
+  <main id="main">
+    <div id="doc-head"></div>
+    <div id="units"></div>
+    <div class="solo" id="solo"><div class="solo-inner" id="solo-inner"></div></div>
+  </main>
+</div>
+
+<aside class="side-panel" id="hl-panel" hidden aria-label="하이라이트 모아보기">
+  <div class="sp-head">
+    <h2>하이라이트 모아보기</h2>
+    <button class="icon-btn" type="button" id="hl-panel-close" aria-label="닫기">✕</button>
+  </div>
+  <div class="sp-filters">
+    <label><input type="checkbox" class="f-color" value="yellow" checked> 노랑</label>
+    <label><input type="checkbox" class="f-color" value="green" checked> 초록</label>
+    <label><input type="checkbox" class="f-color" value="pink" checked> 분홍</label>
+    <label><input type="checkbox" class="f-color" value="blue" checked> 파랑</label>
+    <label>출처 <select id="f-src"><option value="all">전체</option><option value="pdf">요약본</option><option value="md">강의노트</option><option value="supp">보완 현출</option></select></label>
+    <label>단원 <select id="f-unit"><option value="all">전체</option></select></label>
+    <label><input type="checkbox" id="f-memo"> 메모 있는 것만</label>
+    <label>정렬 <select id="f-sort"><option value="doc">본문 순서</option><option value="recent">최근 순</option></select></label>
+  </div>
+  <div class="sp-body" id="hl-list"></div>
+  <div class="sp-actions">
+    <button type="button" class="btn" id="hl-copy-md">Markdown 복사</button>
+    <button type="button" class="btn" id="hl-dl-md">.md 내려받기</button>
+    <button type="button" class="btn" id="hl-push-md">GitHub에 모음 저장</button>
+  </div>
+</aside>
+
+<dialog id="dlg-sync">
+  <form method="dialog" id="sync-form">
+    <div class="dlg-head"><h2>GitHub 연결</h2><button class="icon-btn" value="cancel" aria-label="닫기">✕</button></div>
+    <div class="dlg-body">
+      <p class="help">하이라이트와 메모를 비공개 저장소에 저장해서 기기끼리 맞춥니다. 토큰은 이 기기 브라우저에만 저장되고 GitHub API 말고는 어디에도 보내지 않습니다.</p>
+      <details>
+        <summary>토큰 만드는 법</summary>
+        <ol>
+          <li>GitHub → Settings → Developer settings → Personal access tokens → <b>Fine-grained tokens</b> → Generate new token</li>
+          <li>Resource owner: 본인 계정, Expiration: 원하는 기간</li>
+          <li>Repository access: <b>Only select repositories</b> → 학습 내용이 있는 비공개 저장소 하나만 선택</li>
+          <li>Permissions → Repository permissions → <b>Contents: Read and write</b> (나머지는 그대로)</li>
+          <li>Generate token → 나온 값(<code>github_pat_…</code>)을 아래에 붙여넣기</li>
+        </ol>
+      </details>
+      <label>토큰<input type="password" id="gh-token" autocomplete="off" spellcheck="false" placeholder="github_pat_…"></label>
+      <div class="grid-2">
+        <label>소유자<input type="text" id="gh-owner" autocomplete="off" spellcheck="false"></label>
+        <label>저장소<input type="text" id="gh-repo" autocomplete="off" spellcheck="false"></label>
+      </div>
+      <div class="grid-2">
+        <label>저장 브랜치<input type="text" id="gh-branch" autocomplete="off" spellcheck="false"></label>
+        <label>확인 간격(초)<input type="number" id="gh-interval" min="5" max="600" step="1"></label>
+      </div>
+      <label>저장 파일 경로<input type="text" id="gh-path" autocomplete="off" spellcheck="false"></label>
+      <label>이 기기 이름<input type="text" id="gh-device" autocomplete="off" placeholder="예: 노트북, 아이패드"></label>
+      <p class="warn">공용 컴퓨터에서는 토큰을 저장하지 마세요. 같은 계정의 다른 GitHub Pages 사이트에 남이 만든 코드를 올리면 이 토큰이 노출될 수 있습니다.</p>
+      <div class="dlg-status" id="sync-status">아직 연결하지 않았습니다.</div>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn btn-danger" id="gh-clear">토큰 지우기</button>
+      <a class="btn" id="gh-history" href="#" target="_blank" rel="noopener">변경 이력</a>
+      <button type="button" class="btn" id="gh-test">연결 테스트</button>
+      <button type="button" class="btn" id="gh-sync-now">지금 동기화</button>
+      <button type="button" class="btn-primary" id="gh-save">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-import">
+  <form method="dialog">
+    <div class="dlg-head"><h2>백업 불러오기</h2><button class="icon-btn" value="cancel" aria-label="닫기">✕</button></div>
+    <div class="dlg-body">
+      <label>백업 파일 (JSON)<input type="file" id="import-file" accept="application/json,.json"></label>
+      <label class="menu-item"><input type="radio" name="import-mode" value="merge" checked> 합치기 (같은 항목은 더 최근 것을 남김)</label>
+      <label class="menu-item"><input type="radio" name="import-mode" value="replace"> 덮어쓰기 (지금 기기의 표시를 모두 바꿈)</label>
+      <div class="dlg-status" id="import-status">파일을 고르세요.</div>
+    </div>
+    <div class="dlg-foot">
+      <button class="btn" value="cancel">취소</button>
+      <button type="button" class="btn-primary" id="import-go">불러오기</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-confirm">
+  <form method="dialog">
+    <div class="dlg-head"><h2 id="confirm-title">확인</h2></div>
+    <div class="dlg-body"><p id="confirm-text"></p></div>
+    <div class="dlg-foot">
+      <button class="btn" value="cancel">취소</button>
+      <button class="btn-primary btn-danger" value="ok" id="confirm-ok">확인</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="hl-toolbar" id="hl-toolbar" hidden role="toolbar" aria-label="하이라이트">
+  <button class="hl-sw" type="button" data-color="yellow" aria-label="노랑으로 칠하기 (H)"></button>
+  <button class="hl-sw" type="button" data-color="green" aria-label="초록으로 칠하기"></button>
+  <button class="hl-sw" type="button" data-color="pink" aria-label="분홍으로 칠하기"></button>
+  <button class="hl-sw" type="button" data-color="blue" aria-label="파랑으로 칠하기"></button>
+  <button class="txt" type="button" data-act="memo">메모 (M)</button>
+  <button class="txt" type="button" data-act="cancel" aria-label="취소">✕</button>
+</div>
+<div class="hl-pop" id="hl-pop" hidden role="toolbar" aria-label="하이라이트 편집">
+  <button class="hl-sw" type="button" data-color="yellow" aria-label="노랑"></button>
+  <button class="hl-sw" type="button" data-color="green" aria-label="초록"></button>
+  <button class="hl-sw" type="button" data-color="pink" aria-label="분홍"></button>
+  <button class="hl-sw" type="button" data-color="blue" aria-label="파랑"></button>
+  <button class="txt" type="button" data-act="memo">메모</button>
+  <button class="txt" type="button" data-act="delete">삭제</button>
+</div>
+<div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+
+<script src="assets/app.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "owner": "chamcham02",
+  "repo": "gong_mid",
+  "contentPath": "dist/content.json",
+  "contentRefs": [
+    "main",
+    "claude/sharp-cerf-m9o0xl"
+  ],
+  "annotationsBranch": "annotations",
+  "annotationsPath": "annotations/gongbeop2-kibonkwon.json",
+  "digestPath": "annotations/하이라이트_모음.md"
+}

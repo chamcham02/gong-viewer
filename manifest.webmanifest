@@ -1,0 +1,15 @@
+{
+  "name": "병렬노트",
+  "short_name": "병렬노트",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f4f6f5",
+  "theme_color": "#1b2127",
+  "icons": [
+    {
+      "src": "assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
