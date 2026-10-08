@@ -364,7 +364,7 @@ const History = (() => {
 const Annot = (() => {
   const COLORS = ['yellow', 'green', 'pink', 'blue'];
   const COLOR_KO = { yellow: '노랑', green: '초록', pink: '분홍', blue: '파랑' };
-  const SRC_KO = { pdf: '요약본', md: '강의노트', supp: '보완 현출' };
+  const SRC_KO = { pdf: '요약본', md: '강의노트', supp: '보완 현출', amgi: '암기 카드' };
   const bidRow = new Map();     // 블록 id → 행 id
   const bidPos = new Map();     // 블록 id → 병렬 보기 문서 순서
   const rowPos = new Map();
@@ -428,7 +428,8 @@ const Annot = (() => {
       if (!root) return { segs: [], error: 'cross' };
       blocks = [...root.querySelectorAll('[data-bid]')].filter((b) => !b.parentElement.closest('[data-bid]') && range.intersectsNode(b));
     }
-    const kinds = new Set(blocks.map((b) => (b.dataset.sb === 'pdf' ? 'pdf' : 'md')));
+    // 암기 카드는 요약본 칸에 있어도 따로 센다 (요약본 글과 카드에 걸쳐 칠하지 않게)
+    const kinds = new Set(blocks.map((b) => (b.dataset.sb === 'pdf' || b.dataset.sb === 'amgi' ? b.dataset.sb : 'md')));
     if (kinds.size > 1) return { segs: [], error: 'cross' };
     const segs = [];
     for (const b of blocks) {
@@ -545,7 +546,7 @@ const Annot = (() => {
   // ---------- 만들기 ----------
   function createFromRange(range, color, withMemo) {
     const { segs, error } = rangeToSegs(range);
-    if (error === 'cross') { toast('하이라이트는 한 칸(요약본 또는 강의노트) 안에서만 칠할 수 있습니다.'); return null; }
+    if (error === 'cross') { toast('하이라이트는 한 곳(요약본·강의노트·암기 카드) 안에서만 칠할 수 있습니다.'); return null; }
     if (!segs.length) return null;
     const firstB = findBlock(segs[0].b), lastB = findBlock(segs[segs.length - 1].b);
     const ft = blockText(firstB), lt = blockText(lastB);
@@ -597,7 +598,7 @@ const Annot = (() => {
       const range = sel.getRangeAt(0);
       if (!selectionInContent(range)) { hideToolbar(); return; }
       const { segs, error } = rangeToSegs(range);
-      if (error === 'cross') { hideToolbar(); toast('하이라이트는 한 칸(요약본 또는 강의노트) 안에서만 칠할 수 있습니다.'); return; }
+      if (error === 'cross') { hideToolbar(); toast('하이라이트는 한 곳(요약본·강의노트·암기 카드) 안에서만 칠할 수 있습니다.'); return; }
       if (!segs.length) { hideToolbar(); return; }
       pendingRange = range.cloneRange();
       hidePop();
@@ -1378,7 +1379,7 @@ const Panel = (() => {
     for (const c of t) {
       if (c.synthetic) { if (c.rowId === node.id || c.lvl === 99) out.push(c); continue; }
       if (c.bid === node.titleBid || (mj && c.bid === mj.titleBid) || ctxB.has(c.bid)) continue;
-      if (it.src === 'pdf') { if (c.rowId !== node.id || c.lvl === 1) continue; }
+      if (it.src === 'pdf' || it.src === 'amgi') { if (c.rowId !== node.id || c.lvl === 1) continue; }
       else if (mj && c.rowPos < mj.pos) continue;
       if ((unit && sameText(c.text, unit.title)) || (mj && sameText(c.text, mj.title)) || sameText(c.text, node.title) || node.ctx.some((x) => sameText(c.text, x.text))) continue;
       out.push(c);
@@ -1402,6 +1403,7 @@ const Panel = (() => {
     const t = p.trail.map((c) => c.text);
     if (it.src === 'md' && t.length) return '노트: ' + t.join(' › ');
     if (it.src === 'supp') return ['보완 현출', ...t].join(' › ');
+    if (it.src === 'amgi') return ['암기 카드', ...t].join(' › ');
     return t.join(' › ');
   }
   function pathParts(p, it, opts) {
@@ -1641,6 +1643,9 @@ const Panel = (() => {
         target = document.querySelector(`mark.uhl[data-hid="${CSS.escape(it.id)}"]`);
       }
       if (target.closest('.supp') && document.body.classList.contains('hide-supp')) App.setSupp(true);
+      const card = target.closest('.amgi');
+      if (card && document.body.classList.contains('hide-amgi')) App.setAmgi(true);
+      if (card && card.classList.contains('folded')) App.foldAmgi(card, false);
       if (document.body.classList.contains('focus-hc') && !target.closest('.callout-ex')) App.setFocus(false);
       let d = target.parentElement;
       while (d) { if (d.tagName === 'DETAILS') d.open = true; d = d.parentElement; }
@@ -1967,14 +1972,14 @@ const Editor = (() => {
     $$('[data-cmd], [data-color], [data-act]', bar).forEach((b) => { b.disabled = !on; });
     const st = $('.eb-status', bar);
     if (on) {
-      const src = cur.dataset.sb === 'pdf' ? '요약본' : cur.dataset.sb === 'supp' ? '보완 현출' : '강의노트';
+      const src = cur.dataset.sb === 'pdf' ? '요약본' : cur.dataset.sb === 'supp' ? '보완 현출' : cur.dataset.sb === 'amgi' ? '암기 카드' : '강의노트';
       st.textContent = `${src} 문단 편집 중`;
     } else st.textContent = '고칠 문단을 누르세요';
   }
 
   function onPointerDown(e) {
     if (!active) return;
-    if (e.target.closest('#edit-bar, #pen-dock, .dock-pop, dialog, .topbar, #toc, #hl-panel, #memo-sheet, .memo-lane, .row-bar, .hl-pop, .hl-toolbar, #resume-chip, #hl-return')) return;
+    if (e.target.closest('#edit-bar, #pen-dock, .dock-pop, dialog, .topbar, #toc, #hl-panel, #memo-sheet, .memo-lane, .row-bar, .hl-pop, .hl-toolbar, #resume-chip, #hl-return, .amgi-fold')) return;
     const block = Annot.topBlock(e.target);
     if (!block || !block.closest('#units, #solo-inner, #doc-head')) { finish(); return; }
     if (block === cur) return;
@@ -2864,7 +2869,7 @@ const DEFAULT_CONFIG = {
 };
 
 const App = (() => {
-  let prefs = { theme: 'system', ratio: '4:6', font: 16, supp: true, focus: false, toc: true, mode: 'parallel', done: {}, tool: 'select', lane: true, blank: [], hlFull: false, dockMin: false };
+  let prefs = { theme: 'system', ratio: '4:6', font: 16, supp: true, amgi: true, amgiFold: {}, focus: false, toc: true, mode: 'parallel', done: {}, tool: 'select', lane: true, blank: [], hlFull: false, dockMin: false };
   let config = DEFAULT_CONFIG;
   let content = null;
   const slots = new Map();
@@ -2892,6 +2897,43 @@ const App = (() => {
     document.body.classList.toggle('hide-supp', !on);
     $('#opt-supp').checked = on;
     scheduleSticky();
+  }
+  // 암기 카드: 표시 여부, 카드별 접기(이 기기에만 저장 — 하이라이트 기록과 무관)
+  function setAmgi(on) {
+    prefs.amgi = on; savePrefs();
+    document.body.classList.toggle('hide-amgi', !on);
+    const o = $('#opt-amgi');
+    if (o) o.checked = on;
+    scheduleSticky();
+    MemoLane.schedule();
+  }
+  function foldAmgi(card, folded, opts) {
+    const id = card.dataset.amgi;
+    card.classList.toggle('folded', folded);
+    const b = card.querySelector('.amgi-fold');
+    if (b) b.setAttribute('aria-expanded', String(!folded));
+    if (folded) prefs.amgiFold[id] = 1; else delete prefs.amgiFold[id];
+    if (opts && opts.batch) return;
+    savePrefs();
+    scheduleSticky();
+    MemoLane.schedule();
+  }
+  function applyAmgiFold() { $$('.amgi[data-amgi]').forEach((c) => foldAmgi(c, !!prefs.amgiFold[c.dataset.amgi], { batch: true })); }
+  function foldAllAmgi(folded) {
+    $$('.amgi[data-amgi]').forEach((c) => foldAmgi(c, folded, { batch: true }));
+    savePrefs(); scheduleSticky(); MemoLane.schedule();
+    toast(folded ? '암기 카드를 모두 접었습니다.' : '암기 카드를 모두 폈습니다.');
+  }
+  function bindAmgi() {
+    const hit = (e) => {
+      const f = e.target.closest && e.target.closest('.amgi-fold');
+      if (!f) return;
+      e.preventDefault();
+      const card = f.closest('.amgi');
+      if (card) foldAmgi(card, !card.classList.contains('folded'));
+    };
+    document.addEventListener('click', hit);
+    document.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('amgi-fold')) hit(e); });
   }
   function setFocus(on) {
     prefs.focus = on; savePrefs();
@@ -2925,7 +2967,9 @@ const App = (() => {
       const inner = $('#solo-inner');
       inner.className = 'solo-inner src-' + src;
       inner.innerHTML = `<div class="solo-head" data-generated>${src === 'pdf' ? '요약본 (PDF) — 원래 쪽·단 순서' : '강의노트 (MD) — 원래 순서'} · 병렬 보기로 돌아가려면 위의 ‘병렬’</div>`;
-      const els = $$(`#units [data-sb="${src}"], #doc-head [data-sb="${src}"]`).filter((el) => !el.parentElement.closest('[data-sb]'));
+      // 요약본만 보기에는 요약본 칸의 암기 카드도 같은 자리(순서값)에 넣는다
+      const sel = src === 'pdf' ? '#units [data-sb="pdf"], #units [data-sb="amgi"], #doc-head [data-sb="pdf"]' : `#units [data-sb="${src}"], #doc-head [data-sb="${src}"]`;
+      const els = $$(sel).filter((el) => !el.parentElement.closest('[data-sb]'));
       els.sort((a, b) => Number(a.dataset.order) - Number(b.dataset.order));
       for (const el of els) {
         const ph = document.createElement('i');
@@ -3130,6 +3174,9 @@ const App = (() => {
     $('#btn-focus').addEventListener('click', () => setFocus(!prefs.focus));
     $('#opt-focus').addEventListener('change', (e) => setFocus(e.target.checked));
     $('#opt-supp').addEventListener('change', (e) => setSupp(e.target.checked));
+    $('#opt-amgi').addEventListener('change', (e) => setAmgi(e.target.checked));
+    $('#btn-amgi-fold').addEventListener('click', () => foldAllAmgi(true));
+    $('#btn-amgi-open').addEventListener('click', () => foldAllAmgi(false));
     const menu = $('#menu-panel'), mbtn = $('#btn-menu');
     mbtn.addEventListener('click', () => { menu.hidden = !menu.hidden; mbtn.setAttribute('aria-expanded', String(!menu.hidden)); });
     const closeMenu = () => { menu.hidden = true; mbtn.setAttribute('aria-expanded', 'false'); };
@@ -3248,6 +3295,9 @@ const App = (() => {
     }
     render(c);
     setSupp(prefs.supp);
+    setAmgi(prefs.amgi);
+    applyAmgiFold();
+    bindAmgi();
     setFocus(prefs.focus);
     document.body.classList.toggle('lane-closed', !prefs.lane);
     // 순서가 중요: 편집본 적용 → 메모줄 → 색칠 → 계층(병렬 배치에서 계산) → 진도 → 도구바 → 보기 방식 복원
@@ -3266,7 +3316,7 @@ const App = (() => {
     MemoLane.schedule();
   }
 
-  return { boot, setMode, setSupp, setFocus, setRowTab, setLane, savePref, openPanel, closePanel, scheduleSticky, mode: () => prefs.mode };
+  return { boot, setMode, setSupp, setAmgi, foldAmgi, setFocus, setRowTab, setLane, savePref, openPanel, closePanel, scheduleSticky, mode: () => prefs.mode };
 })();
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => App.boot());

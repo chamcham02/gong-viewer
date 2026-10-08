@@ -43,6 +43,7 @@
   --done: #2e8b57;
   --done-bg: #e9f5ee;
   --blank-stripe: rgba(0, 0, 0, .09);
+  --amgi: #84306c; --amgi-bg: #fbf3f9; --amgi-rule: #dcb2cf; --amgi-mark: #a8175f; --amgi-chip: #f3dcec;
 
   --font-serif: "Noto Serif KR", "Nanum Myeongjo", "AppleMyungjo", "Batang", serif;
   --font-sans: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
@@ -71,6 +72,7 @@ body.lane-closed { --lane-w: var(--lane-closed); }
     --memo-bg: #2a2716; --memo-rule: #6e6230; --focus: #8fb0ff; --shadow: 0 8px 28px rgba(0, 0, 0, .5);
     --lane-bg: #171b1f; --ec-red: #ff8a80; --ec-blue: #8fb0ff; --ec-green: #8fd39a; --ec-orange: #ffb366; --ec-purple: #d6a2e4;
     --edit-mark: #8fb0ff; --edit-bg: #1b2330; --done: #6fd1a0; --done-bg: #17291f; --blank-stripe: rgba(255, 255, 255, .12);
+    --amgi: #eaa6d6; --amgi-bg: #261a23; --amgi-rule: #6a3f5d; --amgi-mark: #ff92cf; --amgi-chip: #3a2433;
     color-scheme: dark;
   }
 }
@@ -84,6 +86,7 @@ body.lane-closed { --lane-w: var(--lane-closed); }
   --memo-bg: #2a2716; --memo-rule: #6e6230; --focus: #8fb0ff; --shadow: 0 8px 28px rgba(0, 0, 0, .5);
   --lane-bg: #171b1f; --ec-red: #ff8a80; --ec-blue: #8fb0ff; --ec-green: #8fd39a; --ec-orange: #ffb366; --ec-purple: #d6a2e4;
   --edit-mark: #8fb0ff; --edit-bg: #1b2330; --done: #6fd1a0; --done-bg: #17291f; --blank-stripe: rgba(255, 255, 255, .12);
+    --amgi: #eaa6d6; --amgi-bg: #261a23; --amgi-rule: #6a3f5d; --amgi-mark: #ff92cf; --amgi-chip: #3a2433;
   color-scheme: dark;
 }
 
@@ -338,6 +341,35 @@ details.callout:not([open]) > summary::after { content: "▸"; }
 .supp-src .src-ref { font-family: var(--font-mono); font-size: .72rem; color: var(--muted); }
 body.hide-supp .supp { display: none; }
 
+/* 암기 카드 (핵심 암기장): 요약본 칸 안, 쟁점 제목 바로 아래. 접으면 머리 줄만 남는다. */
+.amgi { margin: .45rem 0 .7rem; border: 1px solid var(--amgi-rule); border-left: 4px solid var(--amgi); border-radius: 8px; background: var(--amgi-bg); font-family: var(--font-sans); font-size: .88rem; line-height: 1.7; color: var(--ink); }
+.amgi-head { display: flex; align-items: baseline; gap: .5rem; padding: .35rem .55rem .3rem .7rem; }
+.amgi-label { flex: none; font-size: .68rem; font-weight: 700; letter-spacing: .04em; color: var(--amgi); background: var(--amgi-chip); border-radius: 4px; padding: 0 .35rem; }
+.amgi-title { flex: 1; min-width: 0; font-weight: 700; color: var(--amgi); }
+.amgi-geun .amgi-title { font-weight: 600; font-size: .95em; }
+.amgi-fold { flex: none; align-self: center; margin-left: auto; min-width: 1.7rem; text-align: center; cursor: pointer; color: var(--amgi); font-size: .95rem; line-height: 1.5; padding: 0 .3rem; border: 1px solid var(--amgi-rule); border-radius: 5px; background: var(--surface); user-select: none; -webkit-user-select: none; transition: transform .15s; }
+.amgi-fold:hover, .amgi-fold:focus-visible { color: var(--amgi); background: var(--amgi-chip); outline: none; }
+.amgi.folded .amgi-fold { transform: rotate(-90deg); }
+.amgi.folded > .amgi-body { display: none; }
+.amgi-body { padding: 0 .8rem .5rem .8rem; }
+.amgi-body p { margin: .15rem 0; }
+.amgi-key { display: inline-block; margin-right: .4rem; font-size: .66rem; font-weight: 700; color: var(--muted); border: 1px solid var(--rule-strong); border-radius: 3px; padding: 0 .25rem; line-height: 1.35; vertical-align: .08em; }
+.amgi-dumun .dm-word { font-weight: 800; letter-spacing: .12em; color: var(--amgi-mark); }
+.dm-plus-note { margin-left: .35rem; color: var(--muted); font-weight: 600; }
+.amgi .dm { font-weight: 800; color: var(--amgi-mark); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+.amgi .dm.dm-plus { color: var(--muted); text-decoration-style: dashed; }
+.amgi-desc { color: var(--ink); }
+.amgi-line { font-size: .8em; color: var(--ink-2); line-height: 1.6; }
+.amgi-line .amgi-key { font-size: .82em; }
+.amgi-note { font-size: .74rem; color: var(--muted); }
+.amgi-table { width: 100%; border-collapse: collapse; font-size: .95em; }
+.amgi-table th, .amgi-table td { text-align: left; vertical-align: top; padding: .15rem .35rem; border-top: 1px solid var(--amgi-rule); }
+.amgi-table tr:first-child th, .amgi-table tr:first-child td { border-top: 0; }
+.amgi-table th { width: 42%; font-weight: 600; color: var(--ink); }
+.amgi-final { margin-left: .3rem; font-size: .62rem; font-weight: 700; color: var(--danger); border: 1px solid currentColor; border-radius: 3px; padding: 0 .2rem; vertical-align: .1em; }
+body.hide-amgi .amgi { display: none; }
+.toc-badge.amgi-count { border: 1px solid var(--amgi-rule); color: var(--amgi); }
+
 /* 판례 상자 모두 접기 */
 body.collapse-cases details.callout:not(.force-open) > .callout-body { display: none; }
 
@@ -448,6 +480,7 @@ mark.uhl.memo-tail::after { content: "✎"; font-size: .7em; margin-left: .1em; 
 .sp-item .src.pdf { color: var(--pdf); }
 .sp-item .src.md { color: var(--md); }
 .sp-item .src.supp { color: var(--hc); }
+.sp-item .src.amgi { color: var(--amgi); }
 .sp-item .txt { font-family: var(--font-serif); }
 .sp-item .txt[data-color] { padding: 0 .1em; border-radius: 2px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
 .sp-item .txt[data-color="yellow"] { background: var(--hl-yellow); }

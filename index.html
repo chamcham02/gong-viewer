@@ -37,9 +37,12 @@
     <div class="menu-panel" id="menu-panel" hidden>
       <div class="menu-head">보기</div>
       <label class="menu-item"><input type="checkbox" id="opt-supp" checked> 보완 현출 표시</label>
+      <label class="menu-item"><input type="checkbox" id="opt-amgi" checked> 암기 카드 표시</label>
       <label class="menu-item tb-only-sm"><input type="checkbox" id="opt-focus"> 현출 집중</label>
       <button type="button" id="btn-cases-close">판례 상자 모두 접기</button>
       <button type="button" id="btn-cases-open">판례 상자 모두 펴기</button>
+      <button type="button" id="btn-amgi-fold">암기 카드 모두 접기</button>
+      <button type="button" id="btn-amgi-open">암기 카드 모두 펴기</button>
       <button type="button" id="btn-memos-toggle">메모 모두 접기/펴기</button>
       <button type="button" id="btn-lane-toggle">메모줄 접기</button>
       <div class="menu-row">열 비율
@@ -97,7 +100,7 @@
     <label><input type="checkbox" class="f-color" value="green" checked> 초록</label>
     <label><input type="checkbox" class="f-color" value="pink" checked> 분홍</label>
     <label><input type="checkbox" class="f-color" value="blue" checked> 파랑</label>
-    <label>출처 <select id="f-src"><option value="all">전체</option><option value="pdf">요약본</option><option value="md">강의노트</option><option value="supp">보완 현출</option></select></label>
+    <label>출처 <select id="f-src"><option value="all">전체</option><option value="pdf">요약본</option><option value="md">강의노트</option><option value="supp">보완 현출</option><option value="amgi">암기 카드</option></select></label>
     <label>단원 <select id="f-unit"><option value="all">전체</option></select></label>
     <label><input type="checkbox" id="f-memo"> 메모 있는 것만</label>
     <label>정렬 <select id="f-sort"><option value="doc">본문 순서</option><option value="recent">최근 순</option></select></label>
