@@ -265,7 +265,6 @@ body.lane-closed .col-heads .ch-lane { color: transparent; }
 .fs-sm { font-size: .9em; }
 .fs-xs { font-size: .82em; }
 .pill { display: inline-block; font-family: var(--font-sans); font-size: .78em; line-height: 1.35; padding: 0 .38em; margin-right: .08em; border-radius: 999px; background: var(--pill-bg); color: var(--pill-ink); font-weight: 600; letter-spacing: .02em; vertical-align: .08em; }
-.pg-mark { float: right; margin-left: .5rem; font-family: var(--font-mono); font-size: .68rem; color: var(--muted); border: 1px solid var(--rule); border-radius: 4px; padding: 0 .3rem; line-height: 1.5; font-weight: 400; }
 .fnref { font-size: .7em; }
 .fnref a { color: var(--pdf); text-decoration: none; }
 .pdf-fn { border-top: 1px solid var(--rule); margin-top: .8rem; padding-top: .5rem; font-size: .84rem; color: var(--ink-2); }

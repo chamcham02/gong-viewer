@@ -531,10 +531,12 @@ const Annot = (() => {
     } else MemoLane.drop(item.id);
     return marks.length > 0;
   }
-  // 편집으로 블록 글이 바뀐 뒤: 그 블록에 걸린 하이라이트를 다시 칠한다
+  // 편집으로 블록 글이 바뀐 뒤: 그 블록에 걸린 하이라이트를 다시 칠한다 (안에 이어 붙인 블록 것도 함께)
   function repaintBlock(bid, extraIds) {
     const ids = new Set(extraIds || []);
-    for (const it of Store.all('hl')) if ((it.segs || []).some((s) => s.b === bid)) ids.add(it.id);
+    const block = findBlock(bid);
+    const bids = new Set([bid, ...(block ? [...block.querySelectorAll('[data-bid]')].map((b) => b.dataset.bid) : [])]);
+    for (const it of Store.all('hl')) if ((it.segs || []).some((s) => bids.has(s.b))) ids.add(it.id);
     for (const id of ids) { const it = Store.get(id); if (it) paint(it); }
     refreshCounts();
   }
@@ -1348,6 +1350,7 @@ const Panel = (() => {
             const trail = stack.slice();
             if (el.classList.contains('pdf-fn')) trail.push({ text: `각주 ${(el.id || '').replace('fn-', '')}`, full: '각주', lvl: 99, synthetic: true, rowId: node.id });
             bidTrail.set(el.dataset.bid, trail);
+            el.querySelectorAll('.pb-cont[data-bid]').forEach((c) => bidTrail.set(c.dataset.bid, trail)); // 이어 붙인 블록은 앞 문단과 같은 경로
           });
         });
         if (row.querySelector(':scope > .cell-md > .moved-badge')) st.md = mdBefore;
@@ -1796,7 +1799,7 @@ const Editor = (() => {
   const DROP = 'script, style, iframe, object, embed, link, meta, form, input, button, textarea, select, img, video, audio, svg, math, template, base, frame, frameset';
   const STYLE_OK = ['color', 'font-weight', 'font-style', 'text-decoration', 'text-decoration-line'];
   let active = false, showOrig = false;
-  let cur = null, curBefore = null;
+  let cur = null, curBefore = null, curIds = [];
   let bar;
 
   const topBlocks = () => $$('[data-bid]').filter((b) => !b.parentElement.closest('[data-bid]'));
@@ -1890,7 +1893,7 @@ const Editor = (() => {
     cur = block;
     const bid = block.dataset.bid;
     curBefore = History.snap('e:' + bid);
-    Annot.clearBlock(block);
+    curIds = Annot.clearBlock(block);
     toFont(block);
     block.querySelectorAll('[data-generated]').forEach((g) => g.setAttribute('contenteditable', 'false'));
     block.setAttribute('contenteditable', 'true');
@@ -1922,7 +1925,9 @@ const Editor = (() => {
       changed = true;
     }
     if (!changed) applyBlock(bid);
-    curBefore = null;
+    // 고치기 전 이 문단에 칠해져 있던 것은 모두 다시 칠한다 (이어 붙인 블록이 지워졌으면 위치를 잃은 하이라이트로)
+    if (curIds.length) Annot.repaintBlock(bid, curIds);
+    curBefore = null; curIds = [];
     updateBar();
   }
   function revertCurrent() {
@@ -1932,7 +1937,7 @@ const Editor = (() => {
     finish();
     toast('이 문단을 원래 글로 되돌렸습니다. (되돌리기로 다시 살릴 수 있습니다)');
   }
-  const isEditingBlock = (block) => !!cur && block === cur;
+  const isEditingBlock = (block) => !!cur && (block === cur || cur.contains(block));
   const isEditing = () => !!cur;
 
   function setActive(on) {
