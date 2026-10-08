@@ -560,7 +560,7 @@ const Annot = (() => {
       src: firstB.dataset.sb,
     };
     if (withMemo) MemoLane.markOpen(item.id);
-    if (blank.has(item.color)) revealed.add(item.id); // 빈칸 모드 중에 방금 칠한 곳은 열어 둔다
+    // 빈칸 모드 중에 새로 칠한 곳도 그 색을 가리고 있으면 바로 가린다 (revealed에 넣지 않음)
     try { window.getSelection().removeAllRanges(); } catch (e) { /* noop */ }
     hideToolbar();
     History.put(item, withMemo ? '메모 달기' : `${COLOR_KO[item.color]} 하이라이트`);
