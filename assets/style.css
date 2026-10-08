@@ -356,8 +356,8 @@ body.hide-supp .supp { display: none; }
 .amgi-key { display: inline-block; margin-right: .4rem; font-size: .66rem; font-weight: 700; color: var(--muted); border: 1px solid var(--rule-strong); border-radius: 3px; padding: 0 .25rem; line-height: 1.35; vertical-align: .08em; }
 .amgi-dumun .dm-word { font-weight: 800; letter-spacing: .12em; color: var(--amgi-mark); }
 .dm-plus-note { margin-left: .35rem; color: var(--muted); font-weight: 600; }
-.amgi .dm { font-weight: 800; color: var(--amgi-mark); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; }
-.amgi .dm.dm-plus { color: var(--muted); text-decoration-style: dashed; }
+.amgi .dm { font-weight: 800; color: var(--amgi-mark); }
+.amgi .dm.dm-plus { color: var(--muted); }
 .amgi-desc { color: var(--ink); }
 .amgi-line { font-size: .8em; color: var(--ink-2); line-height: 1.6; }
 .amgi-line .amgi-key { font-size: .82em; }
