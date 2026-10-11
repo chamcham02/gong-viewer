@@ -1415,14 +1415,14 @@ const Panel = (() => {
     };
   }
   // 암기장 하이라이트: 화면의 카드(또는 유형) 제목과 칸 이름으로 경로를 만든다
-  const JANG_PART = { w: '언제', l: '법리', c: '사례', t: '요령', q: '출제 신호', o: '목차 틀', x: '기출', r: '순서·연결 규칙' };
+  const JANG_PART = { w: '언제', a: '답안 틀', p: '사안 포섭', l: '필기 원문', c: '사례', t: '요령', q: '출제 신호', o: '목차 틀', x: '기출', r: '순서·연결 규칙' };
   function jangHost(it) {
     if (!it || it.kind !== 'hl' || !it.segs || !it.segs.length || !/^j-/.test(it.segs[0].b)) return null;
     const b = Annot.findBlock(it.segs[0].b);
     return b ? b.closest('[data-jtitle]') : null;
   }
   function jangPart(it) {
-    const m = String(it.segs[0].b).match(/-([wlctqoxr])\d*$/);
+    const m = String(it.segs[0].b).match(/-([walpctqoxr])\d*$/);
     if (/^j-guide-/.test(it.segs[0].b)) return '답안 쓰는 법';
     return m ? JANG_PART[m[1]] : '';
   }
@@ -2926,9 +2926,12 @@ const Loader = (() => {
 // 암기장 보기 — 쟁점별(답안 골격 지도 + 카드) / 유형별. 글자는 content.json의 jang.html에만 있고, 여기서는 동작만 붙인다.
 // 보기·가리기 설정은 이 기기에만 저장한다(하이라이트 기록과 무관). 가리기는 클래스만 바꾸고 본문 DOM은 그대로 둔다.
 const Jang = (() => {
-  const KEY = 'gongbeop2:jang';
-  const TARGETS = ['when', 'law', 'res', 'outline'];
-  let st = { view: 'issues', cover: false, targets: ['law', 'res', 'outline'], map: true };
+  const KEY = 'gongbeop2:jang:v2'; // v2: 답안 틀이 생기면서 처음 보기를 유형별로
+  const TARGETS = ['when', 'law', 'apply', 'res', 'outline'];
+  // 가리기 대상 → 덮을 칸 ('law'는 답안 틀·유형별 답안 전체 틀·필기 원문 문단)
+  const COVER = { when: '.jc-when', law: '.jc-ans, .jc-tpl, .jc-law', apply: '.jc-apply', res: '.jc-res', outline: '.jc-outline' };
+  const ANY = Object.values(COVER).join(', ');
+  let st = { view: 'types', cover: false, targets: ['law', 'apply', 'res'], map: true };
   let root = null, ok = false, io = null, activeChip = null;
 
   function load() { try { st = Object.assign(st, JSON.parse(Store.lsGet(KEY) || '{}')); } catch (e) { /* 기본값 */ } }
@@ -2978,7 +2981,7 @@ const Jang = (() => {
     if (btn) btn.setAttribute('aria-pressed', String(!!st.cover));
     $$('.jang-cover-pop input[type="checkbox"]', root).forEach((x) => { x.checked = st.targets.includes(x.value); });
   }
-  function coverSel() { return st.targets.map((t) => (t === 'res' ? '.jc-res' : '.jc-' + t)).join(', '); }
+  function coverSel() { return st.targets.map((t) => COVER[t]).filter(Boolean).join(', '); }
   function cover(act) {
     if (act === 'on') { st.cover = true; if (!st.targets.length) st.targets = ['law', 'res', 'outline']; }
     if (act === 'off') st.cover = false;
@@ -2988,10 +2991,10 @@ const Jang = (() => {
   }
   function coveredAt(el) {
     if (!st.cover || document.body.classList.contains('edit-mode')) return null;
-    const c = el.closest && el.closest('.jc-when, .jc-law, .jc-res, .jc-outline');
+    const c = el.closest && el.closest(ANY);
     if (!c || c.classList.contains('jv')) return null;
-    const t = c.classList.contains('jc-res') ? 'res' : c.className.match(/jc-(when|law|outline)/)[1];
-    return st.targets.includes(t) ? c : null;
+    const t = TARGETS.find((k) => c.matches(COVER[k]));
+    return t && st.targets.includes(t) ? c : null;
   }
 
   // ---------- 이동 ----------
@@ -3016,8 +3019,10 @@ const Jang = (() => {
     if (!active()) App.setMode('jang');
     const want = el.closest('.jang-types') ? 'types' : 'issues';
     if (st.view !== want) setView(want, { silent: true });
-    const c = el.closest('.jc-when, .jc-law, .jc-res, .jc-outline');
+    const c = el.closest(ANY);
     if (c) c.classList.add('jv');
+    const raw = el.closest('details.jraw');
+    if (raw) raw.open = true;
     const r = el.closest('.jcase');
     if (r) $$('.jc-res', r).forEach((x) => x.classList.add('jv'));
   }

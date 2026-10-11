@@ -936,14 +936,40 @@ body.mode-jang.jang-map-closed .jang-map { display: none; }
 .jout .jlink { font-size: .7rem; margin-left: .2rem; vertical-align: .08em; }
 .jx-id { display: inline-block; font-size: .74rem; font-weight: 700; color: var(--jang); margin-right: .45rem; }
 
+/* 답안 틀 (그대로 쓰는 문단) · 사안 포섭 · 빈칸 · 필기 원문(접힘) · 유형별 답안 전체 틀 */
+.jans { background: var(--surface); border: 1px solid var(--ans); border-left: 4px solid var(--ans); border-radius: 8px; padding: .55rem .8rem; }
+.jsec-ans .jsec-label, .jsec-tpl .jsec-label { color: var(--ans); }
+.jans .jblk, .jtpl .jc-tpl { font-family: var(--font-serif); font-size: .96rem; line-height: 1.9; }
+.jans .jblk + .jblk { margin-top: .5rem; }
+.jc-apply { font-family: var(--font-serif); font-size: .93rem; line-height: 1.8; padding: .3rem .65rem; border: 1px dashed var(--ans); border-radius: 6px; background: var(--paper); }
+.jc-apply + .jc-apply { margin-top: .3rem; }
+.jph { color: var(--jang-hot); background: var(--jang-hot-bg); border-radius: 3px; padding: 0 .1em; font-family: var(--font-sans); font-size: .92em; }
+.jraw { margin-top: .6rem; border-top: 1px dashed var(--rule); padding-top: .35rem; }
+.jraw > summary { cursor: pointer; font-family: var(--font-sans); font-size: .74rem; font-weight: 700; color: var(--muted); list-style: none; }
+.jraw > summary::before { content: "▸ "; }
+.jraw[open] > summary::before { content: "▾ "; }
+.jraw[open] > summary { margin-bottom: .35rem; }
+.jtpl { background: var(--surface); border: 1px solid var(--ans); border-left: 4px solid var(--ans); border-radius: 8px; padding: .6rem .85rem; }
+.jt-h { font-family: var(--font-sans); font-weight: 700; color: var(--ink); line-height: 1.5; }
+.jt-h1 { font-size: 1rem; margin: .9rem 0 .25rem; padding-bottom: .15rem; border-bottom: 1px solid var(--rule); }
+.jt-h1:first-child { margin-top: 0; }
+.jt-h2 { font-size: .92rem; margin: .55rem 0 .15rem; color: var(--ink-2); }
+.jtpl .jc-tpl + .jc-tpl { margin-top: .45rem; }
+
 /* 가리기: 고른 칸 위에 줄무늬 덮개 (누르면 그 칸만 열림) */
 body.jang-cover:not(.edit-mode).jcv-when .jang .jc-when:not(.jv),
 body.jang-cover:not(.edit-mode).jcv-law .jang .jc-law:not(.jv),
+body.jang-cover:not(.edit-mode).jcv-law .jang .jc-ans:not(.jv),
+body.jang-cover:not(.edit-mode).jcv-law .jang .jc-tpl:not(.jv),
+body.jang-cover:not(.edit-mode).jcv-apply .jang .jc-apply:not(.jv),
 body.jang-cover:not(.edit-mode).jcv-res .jang .jc-res:not(.jv),
 body.jang-cover:not(.edit-mode).jcv-outline .jang .jc-outline:not(.jv) { position: relative; cursor: pointer; user-select: none; -webkit-user-select: none; }
 body.jang-cover:not(.edit-mode).jcv-res .jang .jc-res:not(.jv) { min-width: 5em; }
 body.jang-cover:not(.edit-mode).jcv-when .jang .jc-when:not(.jv)::after,
 body.jang-cover:not(.edit-mode).jcv-law .jang .jc-law:not(.jv)::after,
+body.jang-cover:not(.edit-mode).jcv-law .jang .jc-ans:not(.jv)::after,
+body.jang-cover:not(.edit-mode).jcv-law .jang .jc-tpl:not(.jv)::after,
+body.jang-cover:not(.edit-mode).jcv-apply .jang .jc-apply:not(.jv)::after,
 body.jang-cover:not(.edit-mode).jcv-res .jang .jc-res:not(.jv)::after,
 body.jang-cover:not(.edit-mode).jcv-outline .jang .jc-outline:not(.jv)::after { content: ""; position: absolute; inset: 0; z-index: 1; border-radius: 4px; background: repeating-linear-gradient(135deg, transparent 0 6px, var(--blank-stripe) 6px 12px), var(--surface-2); }
 .jang-cover-btn[aria-pressed="true"] { background: var(--jang); color: var(--surface); border-color: var(--jang); }
