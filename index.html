@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&amp;family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;family=Noto+Serif+KR:wght@400;600;700&amp;display=swap">
-<link rel="stylesheet" href="assets/style.css?v=1c460147f0">
+<link rel="stylesheet" href="assets/style.css?v=06dd3d4e24">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <meta name="theme-color" content="#1b2127">
@@ -26,6 +26,7 @@
       <button type="button" data-mode="parallel" aria-pressed="true">병렬</button>
       <button type="button" data-mode="solo-pdf" aria-pressed="false" title="요약본을 원래 순서대로">요약본만</button>
       <button type="button" data-mode="solo-md" aria-pressed="false" title="강의노트를 원래 순서대로">노트만</button>
+      <button type="button" data-mode="jang" aria-pressed="false" title="쟁점별 암기장과 문제 유형" hidden>암기장</button>
     </div>
   </div>
   <button class="tb-btn" id="btn-hl-panel" type="button" aria-pressed="false" title="하이라이트 모아보기"><span class="tb-hide-xs">하이라이트</span><span class="tb-only-xs" aria-hidden="true">HL</span> <span class="count" id="hl-count">0</span></button>
@@ -85,6 +86,7 @@
     <div id="doc-head"></div>
     <div id="units"></div>
     <div class="solo" id="solo"><div class="solo-inner" id="solo-inner"></div></div>
+    <div class="jang" id="jang"></div>
   </main>
 </div>
 
@@ -100,7 +102,7 @@
     <label><input type="checkbox" class="f-color" value="green" checked> 초록</label>
     <label><input type="checkbox" class="f-color" value="pink" checked> 분홍</label>
     <label><input type="checkbox" class="f-color" value="blue" checked> 파랑</label>
-    <label>출처 <select id="f-src"><option value="all">전체</option><option value="pdf">요약본</option><option value="md">강의노트</option><option value="supp">보완 현출</option><option value="amgi">암기 카드</option></select></label>
+    <label>출처 <select id="f-src"><option value="all">전체</option><option value="pdf">요약본</option><option value="md">강의노트</option><option value="supp">보완 현출</option><option value="amgi">암기 카드</option><option value="jang">암기장</option></select></label>
     <label>단원 <select id="f-unit"><option value="all">전체</option></select></label>
     <label><input type="checkbox" id="f-memo"> 메모 있는 것만</label>
     <label>정렬 <select id="f-sort"><option value="doc">본문 순서</option><option value="recent">최근 순</option></select></label>
@@ -270,6 +272,6 @@
 <button type="button" class="hl-return" id="hl-return" hidden>↩ 모아보기로 돌아가기</button>
 <div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
 
-<script src="assets/app.js?v=eb18a13b2c" defer></script>
+<script src="assets/app.js?v=c66d308445" defer></script>
 </body>
 </html>

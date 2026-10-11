@@ -364,7 +364,7 @@ const History = (() => {
 const Annot = (() => {
   const COLORS = ['yellow', 'green', 'pink', 'blue'];
   const COLOR_KO = { yellow: '노랑', green: '초록', pink: '분홍', blue: '파랑' };
-  const SRC_KO = { pdf: '요약본', md: '강의노트', supp: '보완 현출', amgi: '암기 카드' };
+  const SRC_KO = { pdf: '요약본', md: '강의노트', supp: '보완 현출', amgi: '암기 카드', jang: '암기장' };
   const bidRow = new Map();     // 블록 id → 행 id
   const bidPos = new Map();     // 블록 id → 병렬 보기 문서 순서
   const rowPos = new Map();
@@ -424,12 +424,12 @@ const Annot = (() => {
     const single = topBlock(anc);
     if (single) blocks = [single];
     else {
-      const root = anc.closest('.cell, .solo-inner, #doc-head, .unit-head');
+      const root = anc.closest('.cell, .solo-inner, #doc-head, .unit-head, .jcard, .jtype, .jguide');
       if (!root) return { segs: [], error: 'cross' };
       blocks = [...root.querySelectorAll('[data-bid]')].filter((b) => !b.parentElement.closest('[data-bid]') && range.intersectsNode(b));
     }
     // 암기 카드는 요약본 칸에 있어도 따로 센다 (요약본 글과 카드에 걸쳐 칠하지 않게)
-    const kinds = new Set(blocks.map((b) => (b.dataset.sb === 'pdf' || b.dataset.sb === 'amgi' ? b.dataset.sb : 'md')));
+    const kinds = new Set(blocks.map((b) => (b.dataset.sb === 'pdf' || b.dataset.sb === 'amgi' || b.dataset.sb === 'jang' ? b.dataset.sb : 'md')));
     if (kinds.size > 1) return { segs: [], error: 'cross' };
     const segs = [];
     for (const b of blocks) {
@@ -447,7 +447,7 @@ const Annot = (() => {
   // 칠할 수 있는 선택인지: 본문 안이고, 입력칸·메모줄·패널 같은 곳이 아니어야 한다
   function selectionInContent(range) {
     const host = range.commonAncestorContainer.nodeType === 3 ? range.commonAncestorContainer.parentElement : range.commonAncestorContainer;
-    return !!(host && host.closest('#units, #solo-inner, #doc-head') && !host.closest('.memo-card, .memo-lane, textarea, input, [contenteditable="true"], .row-bar'));
+    return !!(host && host.closest('#units, #solo-inner, #doc-head, #jang') && !host.closest('.memo-card, .memo-lane, textarea, input, [contenteditable="true"], .row-bar, .jx'));
   }
 
   // ---------- 칠하기 ----------
@@ -716,6 +716,8 @@ const Annot = (() => {
         if (first) bidRow.set(b.dataset.bid, first.dataset.row);
       }
     });
+    // 암기장 블록: 행에 묶지 않고(목차 숫자·진도와 무관) 병렬 보기 뒤 순서만 준다
+    $$('#jang [data-bid]').forEach((b) => bidPos.set(b.dataset.bid, i++));
     rowsMeta.forEach((r, k) => rowPos.set(r.id, k));
   }
 
@@ -796,6 +798,7 @@ const MemoLane = (() => {
   let activeId = null, editBefore = null;
   let sheet, sheetFor = null, sheetBefore = null;
   let soloLane = null;
+  let jangLane = null;
 
   // ---------- 카드 ----------
   function card(item) {
@@ -985,6 +988,8 @@ const MemoLane = (() => {
   }
   function target(item) {
     const solo = document.body.classList.contains('mode-solo');
+    const jang = document.body.classList.contains('mode-jang');
+    if (item.kind === 'row' && jang) return null;
     if (item.kind === 'row') {
       if (solo) { const el = soloAnchorForRow(item.rowId); return el ? { lane: soloLane, anchor: el } : null; }
       const row = document.getElementById(item.rowId);
@@ -993,6 +998,8 @@ const MemoLane = (() => {
     }
     const m = document.querySelector(`mark.uhl[data-hid="${CSS.escape(item.id)}"]`);
     if (!m) return null;
+    if (jang) return jangLane && m.closest('#jang') ? { lane: jangLane, anchor: m } : null;
+    if (m.closest('#jang')) return null;
     if (solo) return m.closest('#solo-inner') ? { lane: soloLane, anchor: m } : null;
     const row = m.closest('.row');
     if (row) return { lane: row.querySelector(':scope > .memo-lane'), anchor: m };
@@ -1033,7 +1040,7 @@ const MemoLane = (() => {
         const a = visibleAnchor(p.t.anchor);
         if (!a) { p.c.hidden = true; continue; }
         const r = a.getBoundingClientRect();
-        if (p.t.lane === soloLane) top = r.top - soloLane.getBoundingClientRect().top;
+        if (p.t.lane === soloLane || p.t.lane === jangLane) top = r.top - p.t.lane.getBoundingClientRect().top;
         else {
           const cell = a.closest('.cell');
           top = cell ? r.top - cell.getBoundingClientRect().top : 0;
@@ -1234,6 +1241,12 @@ const MemoLane = (() => {
     soloLane.className = 'memo-lane solo-lane';
     soloLane.dataset.generated = '';
     $('#solo').appendChild(soloLane);
+    if ($('#jang') && $('#jang').childElementCount) {
+      jangLane = document.createElement('div');
+      jangLane.className = 'memo-lane jang-lane';
+      jangLane.dataset.generated = '';
+      $('#jang').appendChild(jangLane);
+    }
     bindSheet();
 
     $('#main').addEventListener('click', (e) => {
@@ -1401,8 +1414,20 @@ const Panel = (() => {
       trail: itemTrail(it, node),
     };
   }
+  // 암기장 하이라이트: 화면의 카드(또는 유형) 제목과 칸 이름으로 경로를 만든다
+  const JANG_PART = { w: '언제', l: '법리', c: '사례', t: '요령', q: '출제 신호', o: '목차 틀', x: '기출', r: '순서·연결 규칙' };
+  function jangHost(it) {
+    if (!it || it.kind !== 'hl' || !it.segs || !it.segs.length || !/^j-/.test(it.segs[0].b)) return null;
+    const b = Annot.findBlock(it.segs[0].b);
+    return b ? b.closest('[data-jtitle]') : null;
+  }
+  function jangPart(it) {
+    const m = String(it.segs[0].b).match(/-([wlctqoxr])\d*$/);
+    if (/^j-guide-/.test(it.segs[0].b)) return '답안 쓰는 법';
+    return m ? JANG_PART[m[1]] : '';
+  }
   function trailText(p, it) {
-    if (!p) return '';
+    if (!p) return jangHost(it) ? jangPart(it) : '';
     const t = p.trail.map((c) => c.text);
     if (it.src === 'md' && t.length) return '노트: ' + t.join(' › ');
     if (it.src === 'supp') return ['보완 현출', ...t].join(' › ');
@@ -1410,7 +1435,7 @@ const Panel = (() => {
     return t.join(' › ');
   }
   function pathParts(p, it, opts) {
-    if (!p) return [];
+    if (!p) { const h = jangHost(it); return h ? ['암기장', h.dataset.jtitle, jangPart(it)].filter(Boolean) : []; }
     const f = (c) => (opts && opts.full ? c.full || c.text : c.text);
     const out = [];
     if (p.unit) out.push(`${p.unit.num} ${p.unit.title}`);
@@ -1455,8 +1480,9 @@ const Panel = (() => {
   function grouped(items) {
     const units = [];
     const uMap = new Map();
-    const head = [], lost = [];
+    const head = [], lost = [], jang = [];
     for (const it of items) {
+      if (jangHost(it) && !Annot.isOrphan(it.id)) { jang.push(it); continue; }
       const node = rowTree.get(Annot.itemRow(it));
       if (!node || Annot.isOrphan(it.id)) {
         if (it.segs && headBids.has(it.segs[0].b) && !Annot.isOrphan(it.id)) head.push(it); else lost.push(it);
@@ -1479,6 +1505,19 @@ const Panel = (() => {
     }
     const flat = (key, title, list) => ({ key, unitId: key.slice(2), num: '', title, n: list.length, majors: [{ key: 'm0:' + key, major: null, n: list.length, rows: [{ node: null, items: list }] }] });
     if (head.length) units.unshift(flat('u:__head', '머리말', head));
+    if (jang.length) {
+      const jg = { key: 'u:__jang', unitId: '__jang', num: '', title: '암기장', n: jang.length, majors: [] };
+      const mm = new Map();
+      for (const it of jang) {
+        const h = jangHost(it);
+        const k = h.id;
+        let mg = mm.get(k);
+        if (!mg) { mg = { key: 'm:' + k, major: { id: k, title: h.dataset.jtitle, anchor: '' }, n: 0, rows: [{ node: null, items: [] }] }; mm.set(k, mg); jg.majors.push(mg); }
+        mg.n++;
+        mg.rows[0].items.push(it);
+      }
+      units.push(jg);
+    }
     if (lost.length) units.push(flat('u:__lost', '위치를 잃은 하이라이트', lost));
     return units;
   }
@@ -1636,11 +1675,13 @@ const Panel = (() => {
   function goTo(it) {
     let target;
     if (it.kind === 'row') {
-      if (document.body.classList.contains('mode-solo')) App.setMode('parallel');
+      if (document.body.classList.contains('mode-solo') || document.body.classList.contains('mode-jang')) App.setMode('parallel');
       target = document.getElementById(it.rowId);
     } else {
       target = document.querySelector(`mark.uhl[data-hid="${CSS.escape(it.id)}"]`);
       if (!target) { toast('본문에서 이 하이라이트의 위치를 찾지 못했습니다.'); return; }
+      if (target.closest('#jang')) Jang.show(target);
+      else if (document.body.classList.contains('mode-jang')) App.setMode('parallel');
       if (document.body.classList.contains('mode-solo') && !target.closest('#solo-inner')) {
         App.setMode('parallel');
         target = document.querySelector(`mark.uhl[data-hid="${CSS.escape(it.id)}"]`);
@@ -1984,9 +2025,9 @@ const Editor = (() => {
 
   function onPointerDown(e) {
     if (!active) return;
-    if (e.target.closest('#edit-bar, #pen-dock, .dock-pop, dialog, .topbar, #toc, #hl-panel, #memo-sheet, .memo-lane, .row-bar, .hl-pop, .hl-toolbar, #resume-chip, #hl-return, .amgi-fold')) return;
+    if (e.target.closest('#edit-bar, #pen-dock, .dock-pop, dialog, .topbar, #toc, #hl-panel, #memo-sheet, .memo-lane, .row-bar, .hl-pop, .hl-toolbar, #resume-chip, #hl-return, .amgi-fold, .jx')) return;
     const block = Annot.topBlock(e.target);
-    if (!block || !block.closest('#units, #solo-inner, #doc-head')) { finish(); return; }
+    if (!block || !block.closest('#units, #solo-inner, #doc-head, #jang')) { finish(); return; }
     if (block === cur) return;
     start(block);
     // 커서는 브라우저가 누른 자리에 놓는다. 혹시 못 놓으면 직접 놓는다.
@@ -2193,6 +2234,7 @@ const Progress = (() => {
   function spot() {
     const tb = $('#topbar');
     const y = (tb ? tb.getBoundingClientRect().bottom : 52) + 48;
+    if (document.body.classList.contains('mode-jang') && typeof Jang !== 'undefined') return Jang.spot(y);
     if (document.body.classList.contains('mode-solo')) {
       const el = firstBelow($$('#solo-inner > [data-bid]'), y);
       if (!el) return null;
@@ -2219,6 +2261,12 @@ const Progress = (() => {
     return Store.all('pos').filter((p) => p.rowId && rows.some((r) => r.id === p.rowId)).sort((a, b) => (b.at || 0) - (a.at || 0))[0] || null;
   }
   function posLabel(p) {
+    const jh = p.mode === 'jang' && p.bid ? document.querySelector(`[data-bid="${CSS.escape(p.bid)}"]`) : null;
+    const jt = jh && jh.closest('[data-jtitle]');
+    if (jt) {
+      const mine0 = p.id === 'pos:' + Store.device().id;
+      return `암기장 ${jt.dataset.jtitle} (${mine0 ? '이 기기' : (p.device || '다른 기기')} · ${fmtTime(p.at)})`;
+    }
     const r = rows.find((x) => x.id === p.rowId);
     const node = Panel.rowTree.get(p.rowId);
     const mine = p.id === 'pos:' + Store.device().id;
@@ -2229,6 +2277,16 @@ const Progress = (() => {
     if (!p) return;
     hideChip();
     let el = p.bid ? document.querySelector(`[data-bid="${CSS.escape(p.bid)}"]`) : null;
+    if (el && el.closest('#jang')) {
+      if (typeof Jang === 'undefined' || !Jang.available()) el = null;
+      else {
+        Jang.show(el);
+        el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+        return;
+      }
+    }
+    if (document.body.classList.contains('mode-jang')) App.setMode('parallel');
     if (el && document.body.classList.contains('mode-solo') && !el.closest('#solo-inner')) el = null;
     if (!el) {
       if (document.body.classList.contains('mode-solo')) App.setMode('parallel');
@@ -2354,8 +2412,8 @@ const Dock = (() => {
   // ---------- 바로 칠하기 ----------
   function startsOutside(el) {
     if (!el || !el.closest) return true;
-    if (el.closest('input, textarea, select, button, [contenteditable="true"], .memo-lane, .memo-card, #hl-panel, dialog, #toc, .topbar, #pen-dock, .dock-pop, #edit-bar, #memo-sheet, .hl-toolbar, .hl-pop, .row-bar, #resume-chip, #hl-return')) return true;
-    return !el.closest('#units, #solo-inner, #doc-head');
+    if (el.closest('input, textarea, select, button, [contenteditable="true"], .memo-lane, .memo-card, #hl-panel, dialog, #toc, .topbar, #pen-dock, .dock-pop, #edit-bar, #memo-sheet, .hl-toolbar, .hl-pop, .row-bar, #resume-chip, #hl-return, .jx')) return true;
+    return !el.closest('#units, #solo-inner, #doc-head, #jang');
   }
   function applySelection() {
     if (!PEN.has(tool)) return null;
@@ -2864,6 +2922,197 @@ const Loader = (() => {
   return { inline, fromGitHub, cacheClear };
 })();
 
+// ---- jang.js ----
+// 암기장 보기 — 쟁점별(답안 골격 지도 + 카드) / 유형별. 글자는 content.json의 jang.html에만 있고, 여기서는 동작만 붙인다.
+// 보기·가리기 설정은 이 기기에만 저장한다(하이라이트 기록과 무관). 가리기는 클래스만 바꾸고 본문 DOM은 그대로 둔다.
+const Jang = (() => {
+  const KEY = 'gongbeop2:jang';
+  const TARGETS = ['when', 'law', 'res', 'outline'];
+  let st = { view: 'issues', cover: false, targets: ['law', 'res', 'outline'], map: true };
+  let root = null, ok = false, io = null, activeChip = null;
+
+  function load() { try { st = Object.assign(st, JSON.parse(Store.lsGet(KEY) || '{}')); } catch (e) { /* 기본값 */ } }
+  function save() { Store.lsSet(KEY, JSON.stringify(st)); }
+  const active = () => document.body.classList.contains('mode-jang');
+
+  function render(c, sanitize) {
+    root = $('#jang');
+    const btn = $('#seg-mode button[data-mode="jang"]');
+    ok = !!(c && c.jang && c.jang.html && root);
+    if (btn) btn.hidden = !ok;
+    if (!ok) { if (root) root.innerHTML = ''; return false; }
+    load();
+    root.innerHTML = sanitize(c.jang.html);
+    bind();
+    setView(st.view, { silent: true });
+    applyCover();
+    setMap(st.map, { silent: true });
+    return true;
+  }
+
+  // ---------- 보기 ----------
+  function setView(v, opts) {
+    if (v !== 'types') v = 'issues';
+    st.view = v; save();
+    root.dataset.view = v;
+    $$('.jang-views button', root).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
+    if (opts && opts.silent) return;
+    if (active()) window.scrollTo({ top: 0 });
+    MemoLane.schedule();
+  }
+  function setMap(open, opts) {
+    st.map = !!open; save();
+    document.body.classList.toggle('jang-map-closed', !st.map);
+    const b = $('.jang-map-btn', root);
+    if (b) b.setAttribute('aria-pressed', String(st.map));
+    if (!(opts && opts.silent)) MemoLane.schedule();
+  }
+  function toggleMap() { setMap(!st.map); }
+
+  // ---------- 가리기 ----------
+  function applyCover() {
+    const b = document.body;
+    b.classList.toggle('jang-cover', !!st.cover);
+    for (const t of TARGETS) b.classList.toggle('jcv-' + t, !!st.cover && st.targets.includes(t));
+    const btn = $('.jang-cover-btn', root);
+    if (btn) btn.setAttribute('aria-pressed', String(!!st.cover));
+    $$('.jang-cover-pop input[type="checkbox"]', root).forEach((x) => { x.checked = st.targets.includes(x.value); });
+  }
+  function coverSel() { return st.targets.map((t) => (t === 'res' ? '.jc-res' : '.jc-' + t)).join(', '); }
+  function cover(act) {
+    if (act === 'on') { st.cover = true; if (!st.targets.length) st.targets = ['law', 'res', 'outline']; }
+    if (act === 'off') st.cover = false;
+    if (act === 'all' && st.targets.length) $$(coverSel(), root).forEach((el) => el.classList.add('jv'));
+    if (act === 'again') { st.cover = true; $$('.jv', root).forEach((el) => el.classList.remove('jv')); }
+    save(); applyCover();
+  }
+  function coveredAt(el) {
+    if (!st.cover || document.body.classList.contains('edit-mode')) return null;
+    const c = el.closest && el.closest('.jc-when, .jc-law, .jc-res, .jc-outline');
+    if (!c || c.classList.contains('jv')) return null;
+    const t = c.classList.contains('jc-res') ? 'res' : c.className.match(/jc-(when|law|outline)/)[1];
+    return st.targets.includes(t) ? c : null;
+  }
+
+  // ---------- 이동 ----------
+  function flash(el) { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+  function goCard(id, opts) {
+    const el = document.getElementById('j-' + id);
+    if (!el) return;
+    if (!active()) App.setMode('jang');
+    if (el.closest('.jang-types') ? st.view !== 'types' : st.view !== 'issues') setView(el.closest('.jang-types') ? 'types' : 'issues', { silent: true });
+    if (isNarrow() && st.map && el.classList.contains('jcard') && opts && opts.fromMap) setMap(false, { silent: true });
+    try { history.replaceState(null, '', '#j-' + id); } catch (e) { /* noop */ }
+    // 멀면 바로 뛰고(긴 굴림 없이), 가까우면 부드럽게
+    requestAnimationFrame(() => {
+      const far = Math.abs(el.getBoundingClientRect().top) > window.innerHeight * 2.5;
+      el.scrollIntoView({ block: 'start', behavior: (opts && opts.instant) || far ? 'auto' : 'smooth' });
+      flash(el); MemoLane.schedule();
+    });
+  }
+  // 하이라이트·마지막 위치로 갈 때: 그 글자가 보이도록 보기·가리기를 맞춘다
+  function show(el) {
+    if (!el || !root || !root.contains(el)) return;
+    if (!active()) App.setMode('jang');
+    const want = el.closest('.jang-types') ? 'types' : 'issues';
+    if (st.view !== want) setView(want, { silent: true });
+    const c = el.closest('.jc-when, .jc-law, .jc-res, .jc-outline');
+    if (c) c.classList.add('jv');
+    const r = el.closest('.jcase');
+    if (r) $$('.jc-res', r).forEach((x) => x.classList.add('jv'));
+  }
+  function toNote(rowId) {
+    App.setMode('parallel');
+    const row = document.getElementById(rowId);
+    if (!row) return;
+    requestAnimationFrame(() => { row.scrollIntoView({ block: 'start' }); flash(row); });
+  }
+
+  // ---------- 지도: 지금 보는 카드 표시 ----------
+  function track() {
+    if (io) io.disconnect();
+    const chips = new Map();
+    $$('.jm-chip', root).forEach((c) => { if (!chips.has(c.dataset.card)) chips.set(c.dataset.card, []); chips.get(c.dataset.card).push(c); });
+    io = new IntersectionObserver((entries) => {
+      if (!active() || st.view !== 'issues') return;
+      for (const en of entries) {
+        if (!en.isIntersecting) continue;
+        const list = chips.get(en.target.dataset.jcard) || [];
+        if (activeChip) activeChip.forEach((c) => c.classList.remove('on'));
+        activeChip = list;
+        list.forEach((c) => c.classList.add('on'));
+        const map = $('.jang-map', root);
+        const first = list[0];
+        if (map && first && !isNarrow() && window.scrollY > 200) {
+          const r = first.getBoundingClientRect(), mr = map.getBoundingClientRect();
+          if (r.top < mr.top + 30 || r.bottom > mr.bottom - 30) map.scrollTop += r.top - mr.top - mr.height / 3;
+        }
+      }
+    }, { rootMargin: '-30% 0px -65% 0px' });
+    $$('.jcard', root).forEach((c) => io.observe(c));
+  }
+
+  function bind() {
+    root.addEventListener('click', (e) => {
+      const v = e.target.closest('.jang-views button');
+      if (v) { setView(v.dataset.view); return; }
+      if (e.target.closest('.jang-map-btn')) { toggleMap(); return; }
+      const cb = e.target.closest('.jang-cover-btn');
+      if (cb) {
+        const pop = $('.jang-cover-pop', root);
+        pop.hidden = !pop.hidden;
+        cb.setAttribute('aria-expanded', String(!pop.hidden));
+        return;
+      }
+      const ca = e.target.closest('[data-cover]');
+      if (ca) { cover(ca.dataset.cover); return; }
+      const lk = e.target.closest('a[data-card]');
+      if (lk) { e.preventDefault(); goCard(lk.dataset.card, { fromMap: !!lk.closest('.jang-map') }); return; }
+      const note = e.target.closest('.jf-note, .jf-rowlink');
+      if (note) { e.preventDefault(); toNote(note.dataset.row); return; }
+      if (document.body.classList.contains('edit-mode') || e.target.closest('mark.uhl')) return;
+      const sel = window.getSelection();
+      if (sel && !sel.isCollapsed) return;
+      const c = coveredAt(e.target);
+      if (c) { e.preventDefault(); c.classList.add('jv'); }
+    });
+    root.addEventListener('change', (e) => {
+      const x = e.target.closest('.jang-cover-pop input[type="checkbox"]');
+      if (!x) return;
+      st.targets = $$('.jang-cover-pop input[type="checkbox"]', root).filter((i) => i.checked).map((i) => i.value);
+      if (st.targets.length) st.cover = true;
+      save(); applyCover();
+    });
+    document.addEventListener('click', (e) => {
+      const pop = root && $('.jang-cover-pop', root);
+      if (pop && !pop.hidden && !e.target.closest('.jang-cover-wrap')) { pop.hidden = true; $('.jang-cover-btn', root).setAttribute('aria-expanded', 'false'); }
+    });
+    track();
+  }
+
+  // 마지막 위치: 화면 위쪽에 걸린 첫 블록 (병렬 보기 기기에서도 갈 곳이 있게 카드의 첫 노트 행을 함께 적는다)
+  function spot(y) {
+    if (!ok) return null;
+    const scope = st.view === 'types' ? '.jang-types' : '.jang-issues';
+    const list = $$(`${scope} [data-bid]`, root);
+    let el = null;
+    for (const b of list) { if (b.getBoundingClientRect().bottom > y) { el = b; break; } }
+    if (!el) return null;
+    const host = el.closest('[data-row]');
+    return { bid: el.dataset.bid, rowId: (host && host.dataset.row) || 'u1-r1', mode: 'jang' };
+  }
+  function hashOpen() {
+    const h = decodeURIComponent(location.hash || '');
+    if (!ok || !h.startsWith('#j-')) return false;
+    const id = h.slice(3);
+    if (!document.getElementById('j-' + id)) return false;
+    goCard(id, { instant: true });
+    return true;
+  }
+
+  return { render, available: () => ok, setView, view: () => st.view, toggleMap, goCard, show, spot, hashOpen, cover };
+})();
+
 // ---- app.js ----
 // 화면 조립·보기 설정·대화 상자. 내용은 Loader가 공급한다.
 const PREFS_KEY = 'gongbeop2:prefs';
@@ -2878,6 +3127,7 @@ const App = (() => {
   let config = DEFAULT_CONFIG;
   let content = null;
   const slots = new Map();
+  const scrollMem = {}; // 보기마다 마지막 스크롤 위치 (이번 세션, 병렬 ↔ 암기장 오갈 때)
 
   function loadPrefs() {
     try { prefs = Object.assign(prefs, JSON.parse(Store.lsGet(PREFS_KEY) || '{}')); } catch (e) { /* 기본값 */ }
@@ -2964,9 +3214,14 @@ const App = (() => {
 
   // ---------- 보기 방식 ----------
   function setMode(mode) {
-    if (mode === prefs.mode && (mode === 'parallel' || $('#solo-inner').childElementCount)) { updateModeButtons(); return; }
+    const jangOk = typeof Jang !== 'undefined' && Jang.available();
+    if (mode === 'jang' && !jangOk) mode = 'parallel';
+    if (mode === prefs.mode && (mode === 'parallel' || mode === 'jang' || $('#solo-inner').childElementCount)) { updateModeButtons(); return; }
+    const prev = prefs.mode;
+    scrollMem[prev] = window.scrollY;
     Editor.finish();
     restoreSolo();
+    document.body.classList.toggle('mode-jang', mode === 'jang');
     if (mode === 'solo-pdf' || mode === 'solo-md') {
       const src = mode === 'solo-pdf' ? 'pdf' : 'md';
       const inner = $('#solo-inner');
@@ -2991,6 +3246,9 @@ const App = (() => {
     }
     prefs.mode = mode; savePrefs();
     updateModeButtons();
+    // 암기장과 병렬 보기를 오갈 때는 각자 보던 자리로 (스크롤은 바로 — 뒤따르는 이동이 덮어쓸 수 있게)
+    if (mode === 'jang') window.scrollTo({ top: scrollMem.jang || 0 });
+    else if (prev === 'jang' && mode === 'parallel') window.scrollTo({ top: scrollMem.parallel || 0 });
     scheduleSticky();
     MemoLane.schedule();
   }
@@ -3058,6 +3316,7 @@ const App = (() => {
     $('#doc-head').innerHTML = sanitize(c.headHtml);
     $('#toc').innerHTML = sanitize(c.tocHtml);
     $('#units').innerHTML = sanitize(c.unitsHtml);
+    if (typeof Jang !== 'undefined') Jang.render(c, sanitize);
     $('#toc').addEventListener('click', (e) => {
       if (e.target.closest('a') && window.matchMedia('(max-width: 900px)').matches) setToc(false);
     });
@@ -3068,6 +3327,7 @@ const App = (() => {
     const ro = new ResizeObserver(() => { scheduleSticky(); MemoLane.schedule(); });
     $$('#units .cell').forEach((c2) => ro.observe(c2));
     ro.observe($('#solo-inner'));
+    if ($('#jang')) ro.observe($('#jang'));
     window.addEventListener('resize', () => { scheduleSticky(); MemoLane.schedule(); });
     trackToc();
     if (location.hash) {
@@ -3172,6 +3432,7 @@ const App = (() => {
   // ---------- 상단 바·메뉴 ----------
   function bindTopbar() {
     $('#btn-toc').addEventListener('click', () => {
+      if (document.body.classList.contains('mode-jang')) { Jang.toggleMap(); return; }
       const narrow = window.matchMedia('(max-width: 900px)').matches;
       setToc(narrow ? !document.body.classList.contains('toc-open') : document.body.classList.contains('toc-closed'));
     });
@@ -3316,6 +3577,7 @@ const App = (() => {
     if (prefs.hlFull) Panel.setFull(true, { silent: true });
     document.addEventListener('keydown', onEscape);
     if (prefs.mode !== 'parallel') { const m = prefs.mode; prefs.mode = 'parallel'; setMode(m); }
+    if (typeof Jang !== 'undefined') Jang.hashOpen();
     Sync.start();
     scheduleSticky();
     MemoLane.schedule();
